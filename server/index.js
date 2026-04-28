@@ -449,6 +449,15 @@ io.on('connection', (socket) => {
 app.post('/api/auth/award-points', async (req, res) => {
     const { email, points } = req.body;
     try {
+        if (!mongoose.connection.readyState) {
+            // Mock XP Sync
+            const user = mockUsers.find(u => u.email === email);
+            if (!user) return res.status(404).json({ error: "User not found (Mock Mode)" });
+            user.xp = (user.xp || 0) + (points * 10);
+            if (user.xp >= 1000 && !user.badges.includes('Quick Thinker')) user.badges.push('Quick Thinker');
+            return res.json({ xp: user.xp, badges: user.badges });
+        }
+
         const user = await User.findOne({ email });
         if (!user) return res.status(404).json({ error: "User not found" });
 
