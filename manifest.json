@@ -1,0 +1,16 @@
+{
+  "name": "CogniClass AI",
+  "short_name": "CogniClass",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#12141d",
+  "theme_color": "#6366f1",
+  "description": "Smart AI Classroom Platform",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3449/3449646.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
