@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ClassMind AI Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Dancing+Script:wght@400;700&family=Caveat:wght@400;700&family=Indie+Flower&family=Shadows+Into+Light&family=Sacramento&family=Kalam:wght@300;400;700&family=Homemade+Apple&family=Gloria+Hallelujah&family=Patrick+Hand&family=Amatic+SC:wght@400;700&family=Coming+Soon&family=Nothing+You+Could+Do&family=Reenie+Beanie&family=Zeyada&family=Rock+Salt&family=Covered+By+Your+Grace&family=Architects+Daughter&family=Bad+Script&family=Gochi+Hand&family=Just+Me+Again+Down+Here&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css">
     <link rel="manifest" href="/manifest.json">
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 </head>
 <body>
@@ -128,6 +129,26 @@
                         <div class="lp-feat-icon">✋</div>
                         <div class="lp-feat-title">Raise Hand Signals</div>
                         <div class="lp-feat-desc">Students silently signal for help. You get notified instantly — no chaos, no interruptions.</div>
+                    </div>
+                    <div class="lp-feat">
+                        <div class="lp-feat-icon">✍️</div>
+                        <div class="lp-feat-title">AI Handwriting Lab</div>
+                        <div class="lp-feat-desc">Convert typed text into realistic humanized handwriting. Perfect for generating assignments, notes, and official letters in PDF or PNG.</div>
+                    </div>
+                    <div class="lp-feat">
+                        <div class="lp-feat-icon">🌐</div>
+                        <div class="lp-feat-title">Live Multilingual Translation</div>
+                        <div class="lp-feat-desc">Break language barriers with real-time AI translation of lectures into 50+ languages, including Hindi, Spanish, and French.</div>
+                    </div>
+                    <div class="lp-feat">
+                        <div class="lp-feat-icon">🎨</div>
+                        <div class="lp-feat-title">3D Immersive Whiteboard</div>
+                        <div class="lp-feat-desc">A collaborative space with AI-powered shape recognition and the ability to drop 3D educational models directly into the class.</div>
+                    </div>
+                    <div class="lp-feat">
+                        <div class="lp-feat-icon">👨‍👩‍👧</div>
+                        <div class="lp-feat-title">Parental Insight Portal</div>
+                        <div class="lp-feat-desc">Automated AI-generated weekly progress reports and engagement summaries sent directly to parents to track student growth.</div>
                     </div>
                     <div class="lp-feat">
                         <div class="lp-feat-icon">📋</div>
@@ -512,7 +533,8 @@
                         <button class="control-btn" id="btn-whiteboard" title="Whiteboard">🖍️</button>
                         <button class="control-btn hidden" id="btn-pulse-check" title="Pulse Check (Understanding Meter)" style="border-color: var(--accent); color: var(--accent);">❤️</button>
                         <button class="control-btn hidden" id="btn-set-problem" title="Set Coding Problem (Teacher)" style="border-color: var(--blue); color: var(--blue);">💻</button>
-                        <button class="control-btn hidden" id="btn-live-quiz" title="Generate Live Quiz (Teacher)" style="border-color: var(--yellow); color: var(--yellow);">❓</button>
+                        <button class="control-btn" id="btn-live-quiz" title="Generate Live Quiz (Teacher)" style="border-color: var(--yellow); color: var(--yellow);">❓</button>
+                        <button class="control-btn" id="btn-handwriting" title="Handwriting Lab (Type to Write)" style="border-color: var(--green); color: var(--green);">✍️</button>
                         <button class="control-btn hidden" id="btn-record" title="Record Session" style="border-color: var(--red); color: var(--red);">⏺️</button>
                         <button class="btn btn-primary" id="btn-ai-process" style="height: 50px; border-radius: 25px;">🪄 Generate AI Insights</button>
                     </div>
@@ -669,6 +691,70 @@
                 <p>Analyzing your classroom performance and skills.</p>
             </div>
             <button id="btn-download-resume" class="btn btn-primary" style="width: 100%; margin-top: 24px;">📥 Download as PDF</button>
+        </div>
+    </div>
+
+    <!-- Handwriting Lab Modal -->
+    <div id="handwriting-modal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 3000; display: flex; align-items: center; justify-content: center;">
+        <div style="background: var(--surface); width: 900px; max-height: 90vh; padding: 32px; border-radius: var(--radius); border: 1px solid var(--border); overflow-y: auto; position: relative; display: flex; gap: 24px;">
+            <button id="btn-close-handwriting" class="btn btn-ghost" style="position: absolute; top: 20px; right: 20px; z-index: 10;">✕</button>
+            
+            <!-- Left Side: Controls -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 20px;">
+                <h2 style="color: var(--accent); margin: 0;">✍️ Handwriting Lab</h2>
+                <p style="color: var(--text2); font-size: 0.9rem; margin: -10px 0 0 0;">Convert your typing into realistic handwriting.</p>
+                
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text2); margin-bottom: 8px;">Select Style / Section</label>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="hw-tab active" data-mode="student">Student Work</button>
+                        <button class="hw-tab" data-mode="teacher-in">Teacher (In Class)</button>
+                        <button class="hw-tab" data-mode="teacher-out">Teacher (Outside)</button>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 16px;">
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text2); margin-bottom: 8px;">Font Size (<span id="hw-size-val">32</span>px)</label>
+                        <input type="range" id="hw-size-slider" min="16" max="60" value="32" style="width: 100%; accent-color: var(--accent);">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text2); margin-bottom: 8px;">Ink Color</label>
+                        <input type="color" id="hw-color-picker" value="#1e293b" style="width: 50px; height: 30px; border: none; background: none; cursor: pointer;">
+                    </div>
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text2); margin-bottom: 8px;">Write your content</label>
+                    <textarea id="hw-input" placeholder="Type here to see it in handwriting..." style="width: 100%; height: 120px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; color: var(--text); padding: 12px; font-family: inherit; resize: none; outline: none;"></textarea>
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text2); margin-bottom: 8px;">Choose Writing Sample (Font)</label>
+                    <div id="hw-fonts-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 180px; overflow-y: auto; padding-right: 8px;">
+                        <!-- Fonts will be injected here -->
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: auto;">
+                    <div style="display: flex; gap: 12px;">
+                        <button id="btn-hw-download" class="btn btn-primary" style="flex: 1; justify-content: center; padding: 14px;">🖼️ PNG</button>
+                        <button id="btn-hw-pdf" class="btn btn-primary" style="flex: 1; justify-content: center; padding: 14px; background: linear-gradient(135deg, #ef4444, #b91c1c);">📄 PDF</button>
+                    </div>
+                    <button id="btn-hw-clear" class="btn btn-ghost" style="padding: 10px; font-size: 0.8rem; justify-content: center;">🧹 Clear All</button>
+                </div>
+            </div>
+
+            <!-- Right Side: Preview -->
+            <div style="flex: 1.2; background: #fff; border-radius: 12px; position: relative; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                <div style="padding: 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #64748b; font-size: 0.75rem; font-weight: 700; letter-spacing: 1px;">LIVE PREVIEW</span>
+                    <div id="hw-status" style="font-size: 0.7rem; color: var(--green); font-weight: 600;">● Ready</div>
+                </div>
+                <div id="hw-preview-container" style="flex: 1; position: relative; overflow: hidden; background: #fff;">
+                    <canvas id="hw-canvas" width="600" height="800" style="width: 100%; height: auto; display: block;"></canvas>
+                </div>
+            </div>
         </div>
     </div>
 

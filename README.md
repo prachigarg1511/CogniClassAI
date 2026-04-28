@@ -58,8 +58,12 @@ Once the session ends, the teacher triggers the AI processing. Within seconds, t
 ### 🎮 Gamification & Engagement
 - **Level-Up System**: Real-time XP tracking and leveling for students based on participation.
 - **Achievement Badges**: Unlockable badges like "Quick Thinker" and "Problem Solver."
-- **Live Leaderboard**: Real-time competitive ranking to keep students motivated.
-- **Silent Student Detection**: AI-powered alerts for teachers when students are confused or inactive.
+- **🧠 AI Dashboard**: Real-time class insights, automated MoM, and summary generation.
+- **✍️ AI Handwriting Lab**: Convert typed text into hyper-realistic humanized handwriting. Supports multi-page PDF/PNG export, customizable ink colors, and adjustable sizes.
+- **🌐 Live Translation**: Real-time lecture translation into 50+ languages for global accessibility.
+- **🎨 3D Immersive Whiteboard**: Collaborative space with AI shape recognition and 3D object integration.
+- **👨‍👩‍👧 Parental Insight Portal**: AI-generated weekly growth and engagement reports for parents.
+- **🛡️ Silent Help Signal**: Students can flag confusion without interrupting the flow of the class.
 
 ### 🎥 Professional Suite
 - **Native Video Recording**: High-quality session recording built directly into the browser.

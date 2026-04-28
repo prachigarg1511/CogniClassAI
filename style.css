@@ -331,6 +331,34 @@ canvas { cursor: crosshair; }
 .lp-footer { text-align: center; padding: 40px 24px; color: var(--text3); font-size: 0.9rem; border-top: 1px solid var(--border); margin-top: 60px; }
 
 .hidden { display: none !important; }
+/* ── Handwriting Lab ── */
+.hw-tab {
+  flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text2); font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; transition: var(--transition);
+}
+.hw-tab.active {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+.hw-font-item {
+  padding: 12px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface2); cursor: pointer; transition: var(--transition);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.hw-font-item:hover {
+  border-color: var(--accent); background: var(--surface3);
+}
+.hw-font-item.active {
+  border-color: var(--accent); background: rgba(99,102,241,0.1);
+}
+.hw-font-name { font-size: 0.7rem; color: var(--text3); font-weight: 700; text-transform: uppercase; }
+.hw-font-preview { font-size: 1.1rem; color: var(--text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* Custom scrollbar for font grid */
+#hw-fonts-grid::-webkit-scrollbar { width: 4px; }
+#hw-fonts-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Landing Page New Sections */

@@ -299,6 +299,9 @@ async function launchClassroom(name, code) {
         if (langSelector) langSelector.classList.remove('hidden');
         if (btnViewResume) btnViewResume.classList.remove('hidden');
     }
+    
+    // Initialize Handwriting Tools
+    setupHandwritingLab();
 
     await setupMedia();
     setupSTT();
@@ -1440,3 +1443,227 @@ const revealObserver = new IntersectionObserver((entries) => {
 }, { threshold: 0.05 });
 
 document.querySelectorAll('[data-reveal]').forEach(el => revealObserver.observe(el));
+
+// --- Handwriting Lab Logic ---
+function setupHandwritingLab() {
+    const btnOpen = document.getElementById('btn-handwriting');
+    const modal = document.getElementById('handwriting-modal');
+    const btnClose = document.getElementById('btn-close-handwriting');
+    const canvas = document.getElementById('hw-canvas');
+    const ctx = canvas.getContext('2d');
+    const input = document.getElementById('hw-input');
+    const fontGrid = document.getElementById('hw-fonts-grid');
+    const btnDownload = document.getElementById('btn-hw-download');
+    const btnClear = document.getElementById('btn-hw-clear');
+    const tabs = document.querySelectorAll('.hw-tab');
+
+    const fontSlider = document.getElementById('hw-size-slider');
+    const colorPicker = document.getElementById('hw-color-picker');
+    const sizeVal = document.getElementById('hw-size-val');
+
+    let currentFont = 'Dancing Script';
+    let currentMode = 'student'; 
+    let currentSize = 32;
+    let currentColor = '#1e293b';
+
+    const fonts = [
+        { name: 'Dancing Script', family: "'Dancing Script', cursive" },
+        { name: 'Architects Daughter', family: "'Architects Daughter', cursive" },
+        { name: 'Bad Script', family: "'Bad Script', cursive" },
+        { name: 'Gochi Hand', family: "'Gochi Hand', cursive" },
+        { name: 'Just Me Again Down Here', family: "'Just Me Again Down Here', cursive" },
+        { name: 'Caveat', family: "'Caveat', cursive" },
+        { name: 'Indie Flower', family: "'Indie Flower', cursive" },
+        { name: 'Shadows Into Light', family: "'Shadows Into Light', cursive" },
+        { name: 'Sacramento', family: "'Sacramento', cursive" },
+        { name: 'Kalam', family: "'Kalam', cursive" },
+        { name: 'Homemade Apple', family: "'Homemade Apple', cursive" },
+        { name: 'Gloria Hallelujah', family: "'Gloria Hallelujah', cursive" },
+        { name: 'Patrick Hand', family: "'Patrick Hand', cursive" },
+        { name: 'Amatic SC', family: "'Amatic SC', cursive" },
+        { name: 'Coming Soon', family: "'Coming Soon', cursive" },
+        { name: 'Nothing You Could Do', family: "'Nothing You Could Do', cursive" },
+        { name: 'Reenie Beanie', family: "'Reenie Beanie', cursive" },
+        { name: 'Zeyada', family: "'Zeyada', cursive" },
+        { name: 'Rock Salt', family: "'Rock Salt', cursive" },
+        { name: 'Covered By Your Grace', family: "'Covered By Your Grace', cursive" }
+    ];
+
+    // Initialize fonts grid
+    fontGrid.innerHTML = '';
+    fonts.forEach(f => {
+        const div = document.createElement('div');
+        div.className = `hw-font-item ${f.name === currentFont ? 'active' : ''}`;
+        div.innerHTML = `
+            <div class="hw-font-name">${f.name}</div>
+            <div class="hw-font-preview" style="font-family: ${f.family}">Writing Sample</div>
+        `;
+        div.onclick = () => {
+            document.querySelectorAll('.hw-font-item').forEach(el => el.classList.remove('active'));
+            div.classList.add('active');
+            currentFont = f.name;
+            renderHandwriting();
+        };
+        fontGrid.appendChild(div);
+    });
+
+    // Tab switching
+    tabs.forEach(tab => {
+        tab.onclick = () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            currentMode = tab.dataset.mode;
+            renderHandwriting();
+        };
+    });
+
+    fontSlider.oninput = () => {
+        currentSize = fontSlider.value;
+        sizeVal.innerText = currentSize;
+        renderHandwriting();
+    };
+
+    colorPicker.oninput = () => {
+        currentColor = colorPicker.value;
+        renderHandwriting();
+    };
+
+    function renderHandwriting() {
+        const text = input.value || "Type something to see your handwriting samples here...\n\nYou can manage Size and Ink Color!";
+        const lines = text.split('\n');
+        
+        // Clear canvas
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Paper Background
+        if (currentMode === 'teacher-in' || currentMode === 'student') {
+            // Lined Paper
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+            const step = parseInt(currentSize) + 4; // Adjust lines to font size
+            for (let i = 60; i < canvas.height; i += step) {
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            }
+            // Vertical Margin
+            ctx.strokeStyle = '#fca5a5';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(80, 0); ctx.lineTo(80, canvas.height); ctx.stroke();
+        }
+
+        // Draw Text
+        ctx.fillStyle = currentColor;
+        const fontObj = fonts.find(f => f.name === currentFont);
+        ctx.font = `${currentSize}px ${fontObj.family}`;
+        ctx.textBaseline = 'middle';
+
+        let y = 60;
+        const x = (currentMode === 'teacher-out') ? 40 : 100;
+        const step = parseInt(currentSize) + 4;
+
+        lines.forEach(line => {
+            const words = line.split(' ');
+            let currentLine = '';
+            words.forEach(word => {
+                const testLine = currentLine + word + ' ';
+                if (ctx.measureText(testLine).width > (canvas.width - x - 40)) {
+                    ctx.fillText(currentLine, x, y);
+                    currentLine = word + ' ';
+                    y += step;
+                } else {
+                    currentLine = testLine;
+                }
+            });
+            ctx.fillText(currentLine, x, y);
+            y += step;
+        });
+
+        document.getElementById('hw-status').innerText = "● Rendered";
+    }
+
+    btnOpen.onclick = () => {
+        modal.classList.remove('hidden');
+        renderHandwriting();
+    };
+
+    btnClose.onclick = () => modal.classList.add('hidden');
+    input.oninput = renderHandwriting;
+    btnClear.onclick = () => { input.value = ''; renderHandwriting(); };
+
+    btnDownload.onclick = () => {
+        const link = document.createElement('a');
+        link.download = `CogniClass-Handwriting-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        addSystemMessage("✨ Handwriting PNG downloaded!");
+    };
+
+    const btnPdf = document.getElementById('btn-hw-pdf');
+    if (btnPdf) {
+        btnPdf.onclick = () => {
+            const { jsPDF } = window.jspdf;
+            const text = input.value || "No content to export.";
+            const lines = text.split('\n');
+            const fontObj = fonts.find(f => f.name === currentFont);
+            
+            const tempCanvas = document.createElement('canvas');
+            const tctx = tempCanvas.getContext('2d');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+
+            const doc = new jsPDF({
+                orientation: 'portrait', unit: 'px', format: [canvas.width, canvas.height]
+            });
+
+            const step = parseInt(currentSize) + 4;
+            const topMargin = 60;
+            const linesPerPage = Math.floor((canvas.height - topMargin) / step);
+            const x = (currentMode === 'teacher-out') ? 40 : 100;
+
+            let wrappedLines = [];
+            tctx.font = `${currentSize}px ${fontObj.family}`;
+            lines.forEach(line => {
+                const words = line.split(' ');
+                let currentLine = '';
+                words.forEach(word => {
+                    const testLine = currentLine + word + ' ';
+                    if (tctx.measureText(testLine).width > (tempCanvas.width - x - 40)) {
+                        wrappedLines.push(currentLine);
+                        currentLine = word + ' ';
+                    } else {
+                        currentLine = testLine;
+                    }
+                });
+                wrappedLines.push(currentLine);
+            });
+
+            for (let i = 0; i < wrappedLines.length; i += linesPerPage) {
+                if (i > 0) doc.addPage();
+                const pageLines = wrappedLines.slice(i, i + linesPerPage);
+                tctx.fillStyle = '#ffffff';
+                tctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+                if (currentMode === 'teacher-in' || currentMode === 'student') {
+                    tctx.strokeStyle = '#e2e8f0'; tctx.lineWidth = 1;
+                    for (let l = 60; l < tempCanvas.height; l += step) {
+                        tctx.beginPath(); tctx.moveTo(0, l); tctx.lineTo(tempCanvas.width, l); tctx.stroke();
+                    }
+                    tctx.strokeStyle = '#fca5a5'; tctx.lineWidth = 2;
+                    tctx.beginPath(); tctx.moveTo(80, 0); tctx.lineTo(80, tempCanvas.height); tctx.stroke();
+                }
+
+                tctx.fillStyle = currentColor;
+                tctx.font = `${currentSize}px ${fontObj.family}`;
+                tctx.textBaseline = 'middle';
+                let currentY = topMargin;
+                pageLines.forEach(line => {
+                    tctx.fillText(line, x, currentY);
+                    currentY += step;
+                });
+                doc.addImage(tempCanvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height);
+            }
+            doc.save(`CogniClass-Handwriting-Full-${Date.now()}.pdf`);
+            addSystemMessage(`✨ Multi-page PDF generated (${Math.ceil(wrappedLines.length / linesPerPage)} pages)!`);
+        };
+    }
+}
