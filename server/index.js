@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -31,12 +32,24 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../'))); // Serve project root
 
+// --- Mock DB for Offline Mode ---
+const mockUsers = [];
+const isDbConnected = () => mongoose.connection.readyState === 1;
+
 // --- Auth Routes ---
 
 // Register
 app.post('/api/auth/register', async (req, res) => {
     const { name, email, password, role, phone } = req.body;
     try {
+        if (!mongoose.connection.readyState) {
+            // Mock Registration
+            if (mockUsers.find(u => u.email === email)) return res.status(400).json({ error: "User already exists (Mock Mode)" });
+            const mockUser = { _id: Date.now().toString(), name, email, password, role, phone, xp: 0, badges: [] };
+            mockUsers.push(mockUser);
+            return res.status(201).json({ ...mockUser, token: 'mock-token' });
+        }
+
         const userExists = await User.findOne({ email });
         if (userExists) return res.status(400).json({ error: "User already exists" });
 
@@ -59,6 +72,13 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     try {
+        if (!mongoose.connection.readyState) {
+            // Mock Login
+            const user = mockUsers.find(u => u.email === email && u.password === password);
+            if (user) return res.json({ ...user, token: 'mock-token' });
+            return res.status(401).json({ error: "Invalid email or password (Mock Mode)" });
+        }
+
         const user = await User.findOne({ email });
         if (user && (await user.matchPassword(password))) {
             const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '30d' });

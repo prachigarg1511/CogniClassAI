@@ -77,6 +77,7 @@ CogniClass AI prioritizes the safety and privacy of the classroom environment:
 - **Compulsory Student Data**: During registration, students must provide a **Verified Email** and a **Phone Number** to ensure session accountability.
 - **JWT Protection**: All API routes and real-time socket connections are protected by **JSON Web Tokens (JWT)**.
 - **Bcrypt Hashing**: User passwords are never stored in plain text; they are secured using high-entropy salt and hash algorithms.
+- **Hybrid Resilience**: Automatically detects if MongoDB is unavailable and switches to a high-speed **Mock-Database Mode** for zero-configuration local demos.
 
 ---
 
