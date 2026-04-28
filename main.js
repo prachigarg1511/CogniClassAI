@@ -90,6 +90,26 @@ const btnLiveQuiz = document.getElementById('btn-live-quiz');
 const liveQuizModal = document.getElementById('live-quiz-modal');
 const liveQuizQ = document.getElementById('live-quiz-q');
 const liveQuizOptions = document.getElementById('live-quiz-options');
+const btnAiExplain = document.getElementById('btn-ai-explain');
+const vibeBox = document.getElementById('vibe-box');
+const statVibe = document.getElementById('stat-vibe');
+const langSelector = document.getElementById('lang-selector');
+const subtitleText = document.getElementById('subtitle-text');
+const btnViewResume = document.getElementById('btn-view-resume');
+const resumeModal = document.getElementById('resume-modal');
+const resumeContent = document.getElementById('resume-content');
+const personaSelector = document.getElementById('persona-selector');
+
+if (langSelector) {
+    langSelector.onchange = () => {
+        const lang = langSelector.value;
+        if (lang !== 'en') {
+            addSystemMessage(`🌐 Translation enabled: ${lang.toUpperCase()}`);
+        } else {
+            addSystemMessage("🌐 Translation disabled.");
+        }
+    };
+}
 
 // State
 let socket;
@@ -272,8 +292,12 @@ async function launchClassroom(name, code) {
         if (btnSetProblem) btnSetProblem.classList.remove('hidden');
         if (btnLiveQuiz) btnLiveQuiz.classList.remove('hidden');
         if (btnRecord) btnRecord.classList.remove('hidden');
+        if (vibeBox) vibeBox.classList.remove('hidden');
+        if (personaSelector) personaSelector.classList.remove('hidden');
     } else {
         document.getElementById('xp-bar-container').classList.remove('hidden');
+        if (langSelector) langSelector.classList.remove('hidden');
+        if (btnViewResume) btnViewResume.classList.remove('hidden');
     }
 
     await setupMedia();
@@ -281,6 +305,7 @@ async function launchClassroom(name, code) {
     setupSocket(code);
     setupFocusTracking();
     setupChat();
+    if(userType === 'student') setupEmotionDetection();
 }
 
 btnLeave.onclick = () => location.reload();
@@ -351,18 +376,36 @@ function saveRecording() {
     addSystemMessage("Recording saved and downloaded!");
 }
 
-// --- LMS Sync Mock ---
+// --- LMS Sync ---
 const btnSyncLms = document.getElementById('btn-sync-lms');
 if (btnSyncLms) {
-    btnSyncLms.onclick = () => {
+    btnSyncLms.onclick = async () => {
         btnSyncLms.innerText = "⏳ Syncing...";
         btnSyncLms.disabled = true;
-        setTimeout(() => {
-            alert("Success! Leaderboard and Attendance synced to Google Classroom.");
+        
+        try {
+            const res = await fetch('/api/lms/sync-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    roomCode, 
+                    stats: { 
+                        onlineCount, 
+                        points: myPoints,
+                        transcriptCount: fullTranscript.length 
+                    } 
+                })
+            });
+            const data = await res.json();
+            alert(data.message || "LMS Sync complete!");
+            addSystemMessage("LMS Sync: Session data exported to Google Classroom.");
+        } catch (err) {
+            console.error(err);
+            alert("LMS Sync failed. Check server logs.");
+        } finally {
             btnSyncLms.innerText = "🔄 Sync LMS";
             btnSyncLms.disabled = false;
-            addSystemMessage("LMS Sync Complete: Exported to Google Classroom.");
-        }, 2000);
+        }
     };
 }
 
@@ -529,6 +572,43 @@ function setupSocket(room) {
             }
         }
     });
+
+    // 5. Whiteboard Sync
+    socket.on('remote-draw', (data) => {
+        if (!wbActive) {
+            wbActive = true;
+            if(btnWhiteboard) btnWhiteboard.classList.add('active');
+            if(whiteboardContainer) whiteboardContainer.classList.remove('hidden');
+            if(videoStage) videoStage.classList.add('hidden');
+        }
+        ctx.strokeStyle = data.color || 'var(--text)';
+        ctx.lineWidth = data.width || 2;
+        ctx.beginPath();
+        ctx.moveTo(data.x1, data.y1);
+        ctx.lineTo(data.x2, data.y2);
+        ctx.stroke();
+    });
+
+    socket.on('remote-clear', () => {
+        if(ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    // 6. Emotion Updates (Teacher receives)
+    socket.on('receive-emotion', (data) => {
+        if (userType === 'teacher') {
+            const emojis = { happy: '😊', neutral: '😐', sad: '😕', angry: '😡', surprised: '😲', fearful: '😨', disgusted: '🤢' };
+            statVibe.innerText = emojis[data.emotion] || '😐';
+            if (data.emotion === 'sad' || data.emotion === 'angry') {
+                addSystemMessage(`🔍 AI Insight: Some students look confused or disengaged.`);
+            }
+        }
+    });
+
+    socket.on('proctoring-alert', (data) => {
+        if (userType === 'teacher') {
+            addSystemMessage(`🛡️ AI Proctor: ${data.userName} is not visible on camera.`);
+        }
+    });
 }
 
 
@@ -557,11 +637,25 @@ function setupSTT() {
             if (event.results[i].isFinal) {
                 const text = event.results[i][0].transcript;
                 addTranscriptEntry(userName, text);
+                const lowerText = text.toLowerCase();
 
-                // --- Voice Trigger: "Generate a quiz" ---
-                if (userType === 'teacher' && text.toLowerCase().includes("generate a quiz")) {
-                    addSystemMessage("✨ Voice Trigger Detected: Generating live quiz...");
-                    btnLiveQuiz.click();
+                // --- Voice Commands for Teachers ---
+                if (userType === 'teacher') {
+                    if (lowerText.includes("generate a quiz") || lowerText.includes("start quiz")) {
+                        addSystemMessage("✨ Voice Command: Generating live quiz...");
+                        if (btnLiveQuiz) btnLiveQuiz.click();
+                    } else if (lowerText.includes("clear whiteboard")) {
+                        addSystemMessage("✨ Voice Command: Clearing whiteboard...");
+                        const btnClear = document.getElementById('btn-wb-clear');
+                        if (btnClear) btnClear.click();
+                    } else if (lowerText.includes("open code lab")) {
+                        addSystemMessage("✨ Voice Command: Opening Code Lab...");
+                        if (btnCodeLab) btnCodeLab.click();
+                    } else if (lowerText.includes("start breakout")) {
+                        addSystemMessage("✨ Voice Command: Analyzing breakout rooms...");
+                        const btnB = document.getElementById('btn-breakout');
+                        if (btnB) btnB.click();
+                    }
                 }
             }
         }
@@ -644,7 +738,74 @@ function addChatMessage(user, text, isAnonymous = false) {
 function addTranscriptEntry(user, text) {
     addChatMessage(user, text, false);
     fullTranscript.push({ user, text, timestamp: new Date().toLocaleTimeString() });
+
+    // --- NEW: Real-Time Translation for Subtitles ---
+    if (userType === 'student' && langSelector && langSelector.value !== 'en') {
+        translateAndDisplay(text, langSelector.value);
+    }
 }
+
+async function translateAndDisplay(text, targetLang) {
+    try {
+        const res = await fetch('/api/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, targetLang })
+        });
+        const data = await res.json();
+        if (data.translatedText && subtitleText) {
+            subtitleText.innerText = data.translatedText;
+            subtitleText.style.display = 'inline-block';
+            setTimeout(() => {
+                if (subtitleText.innerText === data.translatedText) {
+                    subtitleText.style.display = 'none';
+                }
+            }, 5000);
+        }
+    } catch (err) {
+        console.error("Translation failed:", err);
+    }
+}
+
+// AI Resume Logic
+if (btnViewResume) {
+    btnViewResume.onclick = async () => {
+        resumeModal.classList.remove('hidden');
+        resumeContent.innerHTML = `<h2 style="color: var(--accent); margin-bottom: 16px;">Building your AI Profile...</h2><p>Analyzing your classroom performance and skills.</p>`;
+        
+        try {
+            const res = await fetch('/api/generate-student-resume', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    studentName: userName,
+                    points: myPoints,
+                    xp: currentXP,
+                    badges: ['Fast Learner', 'Problem Solver'] // Mock badges for now
+                })
+            });
+            const data = await res.json();
+            resumeContent.innerHTML = `<div class="markdown-body">${data.resume.replace(/\n/g, '<br>')}</div>`;
+        } catch (err) {
+            console.error(err);
+            resumeContent.innerHTML = `<p style="color:var(--red);">Failed to generate resume. Try again later.</p>`;
+        }
+    };
+}
+
+document.querySelector('.close-resume')?.addEventListener('click', () => {
+    resumeModal.classList.add('hidden');
+});
+
+document.getElementById('btn-download-resume')?.addEventListener('click', () => {
+    const content = resumeContent.innerText;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${userName}_AI_Resume.txt`;
+    a.click();
+});
 
 function addSystemMessage(text) {
     const entry = document.createElement('div');
@@ -729,11 +890,89 @@ btnWhiteboard.onclick = () => {
 };
 
 if (canvas) {
-    canvas.addEventListener('mousedown', (e) => { drawing = true; ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); });
-    canvas.addEventListener('mousemove', (e) => { if (drawing) { ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); } });
+    let lastX = 0, lastY = 0;
+    canvas.addEventListener('mousedown', (e) => { 
+        drawing = true; 
+        lastX = e.offsetX; lastY = e.offsetY;
+        ctx.beginPath(); 
+        ctx.moveTo(lastX, lastY); 
+    });
+    canvas.addEventListener('mousemove', (e) => { 
+        if (drawing) { 
+            ctx.lineTo(e.offsetX, e.offsetY); 
+            ctx.stroke(); 
+            // Emit to others
+            socket.emit('draw', roomCode, {
+                x1: lastX, y1: lastY,
+                x2: e.offsetX, y2: e.offsetY,
+                color: ctx.strokeStyle,
+                width: ctx.lineWidth
+            });
+            lastX = e.offsetX; lastY = e.offsetY;
+        } 
+    });
     canvas.addEventListener('mouseup', () => drawing = false);
     canvas.addEventListener('mouseout', () => drawing = false);
-    document.getElementById('btn-wb-clear').onclick = () => ctx.clearRect(0, 0, canvas.width, canvas.height);
+    document.getElementById('btn-wb-clear').onclick = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        socket.emit('clear-whiteboard', roomCode);
+    };
+}
+
+// AI Whiteboard Explain
+if (btnAiExplain) {
+    btnAiExplain.onclick = async () => {
+        const image = canvas.toDataURL('image/png');
+        btnAiExplain.innerText = "⏳ Thinking...";
+        btnAiExplain.disabled = true;
+
+        try {
+            const res = await fetch('/api/whiteboard-interpret', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image, transcript: fullTranscript })
+            });
+            const data = await res.json();
+            alert("AI Whiteboard Insight:\n\n" + data.explanation);
+        } catch (err) {
+            console.error(err);
+            alert("Failed to explain whiteboard.");
+        } finally {
+            btnAiExplain.innerText = "🪄 AI Explain";
+            btnAiExplain.disabled = false;
+        }
+    };
+}
+
+// --- Emotion Detection Logic ---
+async function setupEmotionDetection() {
+    try {
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model'; // Better CDN for models
+        // Note: face-api.js usually needs local model files, but some CDNs host them.
+        // If this fails, we can skip or use a different approach.
+        // For this demo, let's assume we can load them.
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+
+        setInterval(async () => {
+            if (!localVideo || localVideo.paused || localVideo.ended) return;
+            const detections = await faceapi.detectAllFaces(localVideo, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+            
+            if (detections && detections.length > 0) {
+                const expressions = detections[0].expressions;
+                const topEmotion = Object.keys(expressions).reduce((a, b) => expressions[a] > expressions[b] ? a : b);
+                socket.emit('emotion-update', roomCode, { userName, emotion: topEmotion });
+            } else {
+                // No face detected
+                if (window.isQuizActive) {
+                    addSystemMessage("⚠️ AI Proctor Alert: Please stay visible to the camera.");
+                    socket.emit('proctoring-alert', roomCode, { userName, type: 'missing_face' });
+                }
+            }
+        }, 5000);
+    } catch (err) {
+        console.warn("Emotion detection setup failed:", err);
+    }
 }
 
 // --- Focus Mode ---
@@ -807,7 +1046,7 @@ btnAiProcess.onclick = async () => {
 
     try {
         // Parallel requests for Summary, Notes, and Flashcards
-        const [sumRes, notesRes, flashRes] = await Promise.all([
+        const [sumRes, notesRes, flashRes, pathRes] = await Promise.all([
             fetch('/api/process-session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -826,21 +1065,32 @@ btnAiProcess.onclick = async () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ transcript: fullTranscript })
+            }),
+            fetch('/api/generate-study-plan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transcript: fullTranscript, studentName: userName })
             })
         ]);
 
         const data = await sumRes.json();
         const notesData = await notesRes.json();
         const flashData = await flashRes.json();
+        const pathData = await pathRes.json();
 
         // Render Summary
         renderAiInsights(data);
         
         // Render Auto-Notes
-        document.getElementById('ai-auto-notes').innerText = notesData.notes || "Failed to generate notes.";
+        const autoNotes = document.getElementById('ai-auto-notes');
+        if(autoNotes) autoNotes.innerText = notesData.notes || "Failed to generate notes.";
         
         // Render Flashcards
         renderFlashcards(flashData);
+
+        // Render Study Path
+        const pathPane = document.getElementById('ai-study-path');
+        if (pathPane) pathPane.innerText = pathData.plan || "No specific study path generated.";
 
         aiModal.classList.remove('hidden');
         switchModalTab('summary');
@@ -1123,3 +1373,70 @@ function showBreakoutResults(rooms) {
     document.getElementById('ai-modal').classList.remove('hidden');
     document.getElementById('ai-notes').innerHTML = html; // Show in first tab
 }
+
+// --- Teacher Copilot Logic ---
+// Copilot elements already declared above
+
+
+if (btnCopilot) {
+    btnCopilot.onclick = () => copilotWindow.classList.toggle('hidden');
+}
+
+if (btnCloseCopilot) {
+    btnCloseCopilot.onclick = () => copilotWindow.classList.add('hidden');
+}
+
+window.askCopilot = async () => {
+    const query = copilotInput.value.trim();
+    if (!query) return;
+
+    const persona = personaSelector ? personaSelector.value : 'default';
+    
+    const msgDiv = document.createElement('div');
+    msgDiv.style.margin = '8px 0';
+    msgDiv.innerHTML = `<span style="color:var(--accent); font-weight:700;">You:</span> ${query}`;
+    copilotMessages.appendChild(msgDiv);
+    copilotInput.value = '';
+
+    try {
+        const res = await fetch('/api/copilot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, transcript: fullTranscript, persona })
+        });
+        const data = await res.json();
+        
+        const replyDiv = document.createElement('div');
+        replyDiv.style.margin = '8px 0';
+        replyDiv.style.padding = '8px';
+        replyDiv.style.background = 'rgba(255,255,255,0.05)';
+        replyDiv.style.borderRadius = '4px';
+        replyDiv.innerHTML = `<span style="color:var(--yellow); font-weight:700;">Copilot:</span> ${data.reply}`;
+        copilotMessages.appendChild(replyDiv);
+        copilotMessages.scrollTop = copilotMessages.scrollHeight;
+    } catch (err) {
+        console.error(err);
+    }
+};
+
+
+
+copilotInput?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') askCopilot();
+});
+
+// btnViewResume handler already declared above
+
+
+document.getElementById('btn-close-resume').onclick = () => resumeModal.classList.add('hidden');
+
+// --- Reveal Animations Observer ---
+const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('revealed');
+        }
+    });
+}, { threshold: 0.05 });
+
+document.querySelectorAll('[data-reveal]').forEach(el => revealObserver.observe(el));

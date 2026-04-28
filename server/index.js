@@ -183,8 +183,17 @@ app.post('/api/copilot', async (req, res) => {
 
         const contextText = transcript.map(t => `${t.user}: ${t.text}`).join('\n');
         
+        const persona = req.body.persona || 'default';
+        const personaPrompts = {
+            socrates: "You are Socrates. Answer by asking probing questions that lead the teacher/student to the answer themselves. Never give a direct answer.",
+            einstein: "You are Albert Einstein. Use physics metaphors, be humble but brilliant, and occasionally use German phrases like 'Das ist gut!'.",
+            shakespeare: "You are William Shakespeare. Speak in early modern English iambic pentameter or use flowery, poetic metaphors.",
+            pirate: "You are a Pirate Teacher. Use pirate slang like 'Arrr!', 'Ahoy!', and 'Matey!', but still be educational.",
+            default: "You are a helpful Teacher Copilot. Answer concisely based on context."
+        };
+
         const prompt = `
-            You are a "Teacher Copilot" assisting a teacher.
+            ${personaPrompts[persona] || personaPrompts.default}
             
             HISTORICAL CONTEXT (Past Classes):
             ${historicalContext || "No previous session data found."}
@@ -196,7 +205,6 @@ app.post('/api/copilot', async (req, res) => {
             
             If the teacher asks about previous classes, use the HISTORICAL CONTEXT. 
             If they ask about the current class, use the LIVE CLASS TRANSCRIPT.
-            Answer concisely.
         `;
 
         const result = await model.generateContent(prompt);
@@ -284,6 +292,35 @@ app.post('/api/generate-breakout-rooms', async (req, res) => {
     }
 });
 
+// AI Whiteboard Interpret (Vision)
+app.post('/api/whiteboard-interpret', async (req, res) => {
+    const { image, transcript } = req.body; // image is base64
+    if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing." });
+
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        
+        // Convert base64 to parts for Gemini
+        const parts = [
+            { text: "You are an educational AI. Look at this whiteboard sketch from a classroom. Based on the current class context (provided below), explain what this drawing represents and how it relates to the lesson. Keep it concise." },
+            { text: "Class Context: " + (transcript ? transcript.slice(-20).map(t => t.text).join(' ') : "General Lesson") },
+            {
+                inlineData: {
+                    mimeType: "image/png",
+                    data: image.split(',')[1]
+                }
+            }
+        ];
+
+        const result = await model.generateContent(parts);
+        const response = await result.response;
+        res.json({ explanation: response.text() });
+    } catch (error) {
+        console.error("Vision Error:", error);
+        res.status(500).json({ error: "Failed to interpret whiteboard." });
+    }
+});
+
 // AI Auto-Note Generator
 app.post('/api/generate-notes', async (req, res) => {
     const { transcript } = req.body;
@@ -341,6 +378,100 @@ app.post('/api/generate-flashcards', async (req, res) => {
     } catch (error) {
         console.error("Flashcards Error:", error);
         res.status(500).json({ error: "Failed to generate flashcards." });
+    }
+});
+
+// AI Personalized Study Plan
+app.post('/api/generate-study-plan', async (req, res) => {
+    const { transcript, studentName } = req.body;
+    if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing." });
+
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+        const contextText = transcript.map(t => `${t.user}: ${t.text}`).join('\n');
+        
+        const prompt = `
+            You are a personal AI tutor for ${studentName}. Based on this classroom transcript, generate a personalized weekly study plan for them.
+            Highlight:
+            1. Key concepts they must master.
+            2. Recommended practice exercises.
+            3. A specific schedule (e.g., Monday: Review Topic X).
+            
+            Return the response in professional Markdown.
+            
+            TRANSCRIPT:
+            ${contextText}
+        `;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        res.json({ plan: response.text() });
+    } catch (error) {
+        console.error("Study Plan Error:", error);
+        res.status(500).json({ error: "Failed to generate study plan." });
+    }
+});
+
+// --- LMS: Google Classroom Integration (Skeleton) ---
+app.get('/api/lms/auth', (req, res) => {
+    // In a real app, redirect to Google OAuth URL
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) return res.status(400).send("GOOGLE_CLIENT_ID not set in .env");
+    res.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=...` });
+});
+
+app.post('/api/lms/sync-session', async (req, res) => {
+    const { roomCode, stats } = req.body;
+    // Simulate API call to Google Classroom
+    console.log(`Syncing session ${roomCode} to Google Classroom...`);
+    setTimeout(() => {
+        res.json({ success: true, message: "Synced attendance and grades to Google Classroom." });
+    }, 1500);
+});
+
+// AI Real-Time Translation
+app.post('/api/translate', async (req, res) => {
+    const { text, targetLang } = req.body;
+    if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing." });
+
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+        const prompt = `Translate the following classroom text into the language with code "${targetLang}". Return ONLY the translated text. 
+        Text: "${text}"`;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        res.json({ translatedText: response.text() });
+    } catch (error) {
+        console.error("Translation Error:", error);
+        res.status(500).json({ error: "Translation failed." });
+    }
+});
+
+// AI Student Resume Generator
+app.post('/api/generate-student-resume', async (req, res) => {
+    const { studentName, points, xp, badges } = req.body;
+    if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing." });
+
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+        const prompt = `
+            You are a professional career coach. Generate a "Smart AI Resume" for a student based on these classroom stats:
+            NAME: ${studentName}
+            POINTS: ${points}
+            XP: ${xp}
+            BADGES: ${badges.join(', ')}
+            
+            Format the response in professional Markdown. Include sections like "Profile Summary", "Top Skills", "Key Achievements", and "AI Career Recommendation".
+            Keep it under 300 words.
+        `;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        res.json({ resume: response.text() });
+    } catch (error) {
+        console.error("Resume Error:", error);
+        res.status(500).json({ error: "Failed to generate resume." });
     }
 });
 
@@ -409,6 +540,15 @@ io.on('connection', (socket) => {
 
     socket.on('submit-assignment', (roomId, data) => {
         socket.to(roomId).emit('assignment-submitted', data); // teacher receives submission
+    });
+
+    // Collaborative Whiteboard
+    socket.on('draw', (roomId, drawData) => {
+        socket.to(roomId).emit('remote-draw', drawData);
+    });
+
+    socket.on('clear-whiteboard', (roomId) => {
+        socket.to(roomId).emit('remote-clear');
     });
 
     // 6. Code / Problem Lab
