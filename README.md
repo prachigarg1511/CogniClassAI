@@ -69,6 +69,33 @@ Once the session ends, the teacher triggers the AI processing. Within seconds, t
 
 ---
 
+## 🔐 Security & Authentication
+
+CogniClass AI prioritizes the safety and privacy of the classroom environment:
+
+- **Mandatory Authentication**: Direct "Guest" entry is disabled. All users (Teachers and Students) must have a verified account.
+- **Compulsory Student Data**: During registration, students must provide a **Verified Email** and a **Phone Number** to ensure session accountability.
+- **JWT Protection**: All API routes and real-time socket connections are protected by **JSON Web Tokens (JWT)**.
+- **Bcrypt Hashing**: User passwords are never stored in plain text; they are secured using high-entropy salt and hash algorithms.
+
+---
+
+## 💎 Feature Matrix: Teacher vs. Student
+
+| Feature | Teacher | Student |
+| :--- | :---: | :---: |
+| **Live Recording** | ✅ | ❌ |
+| **AI Study Notes Generator** | ✅ | ✅ |
+| **Interactive 3D Flashcards** | ✅ | ✅ |
+| **Real-time Leaderboard** | ✅ | ✅ |
+| **Smart Breakout Rooms** | ✅ | ❌ |
+| **AI Code Hint Tool** | ❌ | ✅ |
+| **LMS Sync (Google Classroom)** | ✅ | ❌ |
+| **Focus Tracking Alerts** | ✅ | ❌ |
+| **Anonymous Doubts** | ❌ | ✅ |
+
+---
+
 ## 🛠️ Tech Stack
 
 - **Frontend**: HTML5, Vanilla CSS3 (Custom Design System), JavaScript (ES6+)
