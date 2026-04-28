@@ -96,6 +96,20 @@ CogniClass AI prioritizes the safety and privacy of the classroom environment:
 
 ---
 
+## ⚖️ Market Comparison: CogniClass AI vs. Others
+
+| Feature | CogniClass AI | Zoom / Google Meet | MS Teams |
+| :--- | :---: | :---: | :---: |
+| **Real-time AI Notes** | ✅ Native | ❌ | ❌ |
+| **AI Study Flashcards** | ✅ Native | ❌ | ❌ |
+| **Gamified XP & Badges** | ✅ Native | ❌ | ❌ |
+| **Silent Student Detection** | ✅ Native | ❌ | ❌ |
+| **Built-in Code Lab** | ✅ Native | ❌ | ❌ |
+| **Pedagogical Insights** | ✅ Native | ❌ | ❌ |
+| **Recording & Transcription** | ✅ | ✅ (Paid) | ✅ (Paid) |
+
+---
+
 ## 🛠️ Tech Stack
 
 - **Frontend**: HTML5, Vanilla CSS3 (Custom Design System), JavaScript (ES6+)
