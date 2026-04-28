@@ -8,6 +8,44 @@
 
 ---
 
+## 🗺️ Platform Workflow & Architecture
+
+### 🔄 System Flowchart
+```mermaid
+graph TD
+    A[Teacher: Create Session] --> B[Live Classroom]
+    C[Student: Join Session] --> B
+    B --> D{Real-Time Engine}
+    D -->|Speech-to-Text| E[AI Transcript]
+    D -->|Interaction| F[Leaderboard & XP]
+    D -->|Monitoring| G[Focus & Confusion Tracking]
+    
+    E --> H[Gemini 1.5 Processing]
+    H --> I[Smart Auto-Notes]
+    H --> J[Interactive Flashcards]
+    H --> K[Session Insights & Reports]
+    
+    I --> L[Post-Session Learning]
+    J --> L
+    K --> M[LMS Sync: Google Classroom]
+```
+
+### 📋 Detailed Workflow Description
+
+#### 1. Session Initiation
+The teacher creates a secure, unique classroom room code. Students log in with their **compulsory email and phone credentials** to ensure data persistence across sessions.
+
+#### 2. The Live Intelligence Layer
+While the teacher conducts the lecture, **CogniClass AI** actively listens. It performs real-time Speech-to-Text, allowing the **Teacher Copilot** to analyze the session live. If students lose focus or raise their hands silently, the teacher is instantly notified via the dashboard.
+
+#### 3. Gamified Participation
+Every correct answer in a **Live Pop Quiz** or successful code execution in the **Code Lab** awards the student points and XP. These are saved to their permanent MongoDB profile, allowing them to unlock badges and climb the global leaderboard.
+
+#### 4. Automated Post-Session Tools
+Once the session ends, the teacher triggers the AI processing. Within seconds, the platform generates **Markdown Study Notes** and **3D Flashcards**. These are archived and can be synced directly to external LMS platforms like **Google Classroom**.
+
+---
+
 ## 🌟 Key Features
 
 ### 🧠 Advanced AI Intelligence
@@ -98,4 +136,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-### Made with ❤️ by Prachi
+### Made with ❤️ by Prachi Garg
